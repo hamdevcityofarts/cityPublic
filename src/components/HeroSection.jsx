@@ -12,16 +12,16 @@ const slides = [
     image: img0,
     eyebrow: "Bienvenue au Grand Hôtel",
     title: "Confort & Élégance",
-    titleItalic: "près de l'aéroport",
-    description: "Séjournez dans nos suites luxueuses, conçues pour les voyageurs exigeants."
+    titleItalic: "pour vous acceuillir !",
+    description: " Notre équipe dévouée est à votre service 24h/24 pour rendre votre séjour inoubliable."
   },
   {
     id: 2,
     image: img1,
     eyebrow: "Notre engagement",
-    title: "Un Service",
+    title: "Un Cadre",
     titleItalic: "Exceptionnel",
-    description: "Notre équipe dévouée est à votre service 24h/24 pour rendre votre séjour inoubliable."
+    description: "En Plein Coeur d'Akwa le centre des Affaires de Douala."
   },
   {
     id: 3,
