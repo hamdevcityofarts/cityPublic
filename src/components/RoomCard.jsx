@@ -1,11 +1,23 @@
 // src/components/RoomCard.jsx — VERSION LUXE HÔTELIÈRE
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Users, MapPin, Bed, Tag, Zap, X, Check, AlertCircle, Bell } from 'lucide-react'
+import { Users, MapPin, Bed, Tag, Zap, X, Check, AlertCircle, Bell, MessageCircle } from 'lucide-react'
 import { useSelector } from 'react-redux'
 import ImageSlider from './ImageSlider'
 import roomsService from '../services/roomsService'
 import promoCodesService from '../services/promoCodesService'
+
+// ── TEMPORARY WHATSAPP BYPASS (à désactiver une fois l'intégration CyberSource rétablie) ──
+// Activer le mode temporaire : REACT_APP_TEMPORARY_WHATSAPP_BOOKING=true (défaut à true)
+// Désactiver pour réactiver le workflow paiement complet : REACT_APP_TEMPORARY_WHATSAPP_BOOKING=false
+const TEMPORARY_WHATSAPP_BOOKING = process.env.REACT_APP_TEMPORARY_WHATSAPP_BOOKING === 'true' || true
+// Numéro de téléphone de l'équipe de réception (format international sans le '+')
+const WHATSAPP_PHONE_NUMBER = process.env.REACT_APP_WHATSAPP_PHONE_NUMBER || '237699008325'
+// Template du message pré-rempli (peut être surchargé par variable d'environnement)
+const buildWhatsAppMessage = (room, typeLabel) => {
+  const defaultMessage = `Bonjour, je souhaite réserver la chambre ${room.name} (${typeLabel}) - N°${room.number}. Capacité : ${room.capacity} personne(s). Merci de me contacter pour finaliser ma réservation.`
+  return process.env.REACT_APP_WHATSAPP_MESSAGE || defaultMessage
+}
 
 // ── Constantes typo (cohérentes Navbar + Home) ──
 const serif = { fontFamily: "'Cormorant Garamond', serif" }
@@ -33,7 +45,7 @@ const RoomCard = ({ room }) => {
       if (!room?._id) return
       setLoadingPromos(true)
       try {
-        const response = await promoCodesService.getRoomPromos(room._id)
+        const response = await promoCodesService.getRoomPromos(room._id, room.price);
         if (response.success && response.availablePromos)
           setRoomPromos(response.availablePromos)
       } catch (error) {
@@ -58,7 +70,7 @@ const RoomCard = ({ room }) => {
     if (!promoCode.trim()) { setPromoError('Veuillez entrer un code promo'); return }
     setVerifying(true); setPromoError('')
     try {
-      const response = await promoCodesService.verifyCodePromo(promoCode, room._id, 1)
+      const response = await promoCodesService.verifyCodePromo(promoCode, room._id, 1, null, null, room.price);
       if (response.success) {
         setVerifiedPromo(response.codePromo); setPromoError('')
         showNotification(`🎉 Code appliqué ! Économie de ${formatPrice(response.codePromo.economie)}`, 'success')
@@ -78,7 +90,8 @@ const RoomCard = ({ room }) => {
     showNotification('Code promo retiré', 'info')
   }
 
-  const handleReservationClick = (e) => {
+  // ── Logique originale de réservation (intégralement conservée) ──
+  const originalReservationHandler = (e) => {
     e.preventDefault(); e.stopPropagation()
     const promoData = verifiedPromo ? {
       codePromo: verifiedPromo.code, prixOriginal: verifiedPromo.prixOriginal,
@@ -89,6 +102,28 @@ const RoomCard = ({ room }) => {
       navigate('/login', { state: { from: `/booking?room=${room._id}`, message: 'Connectez-vous pour réserver', promoData } })
     } else {
       navigate(`/booking?room=${room._id}`, { state: { promoData } })
+    }
+  }
+
+  // ── Nouvelle redirection temporaire WhatsApp (sans altération de l'original) ──
+  const whatsappRedirectHandler = (e) => {
+    e.preventDefault(); e.stopPropagation()
+    const typeLabel = getTypeLabel(room.type)
+    const message = buildWhatsAppMessage(room, typeLabel)
+    const encodedMessage = encodeURIComponent(message)
+    const whatsappUrl = `https://wa.me/${WHATSAPP_PHONE_NUMBER}?text=${encodedMessage}`
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
+    // Notification optionnelle pour informer l'utilisateur du mode temporaire
+    showNotification(`📱 Demande envoyée via WhatsApp pour la chambre ${room.name}`, 'info')
+  }
+
+  // ── Point d'entrée unique du bouton : bascule selon le flag temporaire ──
+  const handleReservationClick = (e) => {
+    if (room.status !== 'disponible') return // Désactivé si chambre non disponible
+    if (TEMPORARY_WHATSAPP_BOOKING) {
+      whatsappRedirectHandler(e)
+    } else {
+      originalReservationHandler(e)
     }
   }
 
@@ -359,18 +394,30 @@ const RoomCard = ({ room }) => {
             </button>
           )}
 
-          {/* Bouton réserver */}
+          {/* Bouton réserver/WhatsApp — workflow basculable */}
           <button
             onClick={handleReservationClick}
             disabled={room.status !== 'disponible'}
             style={{ ...sans, fontSize: "10px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}
             className={`${hasActivePromos ? 'flex-1' : 'w-full'} py-2.5 px-4 rounded-xl
-              transition-all duration-200
+              transition-all duration-200 flex items-center justify-center gap-2
               ${room.status === 'disponible'
-                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-sm hover:shadow-md'
+                ? TEMPORARY_WHATSAPP_BOOKING
+                  ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 shadow-sm hover:shadow-md'
+                  : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-sm hover:shadow-md'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+            title={TEMPORARY_WHATSAPP_BOOKING && room.status === 'disponible' ? "Réservation temporaire via WhatsApp" : ""}
           >
-            {room.status === 'disponible' ? 'Réserver' : 'Indisponible'}
+            {room.status === 'disponible' && TEMPORARY_WHATSAPP_BOOKING ? (
+              <>
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>WhatsApp</span>
+              </>
+            ) : room.status === 'disponible' ? (
+              'Réserver'
+            ) : (
+              'Indisponible'
+            )}
           </button>
         </div>
 
