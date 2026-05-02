@@ -15,17 +15,16 @@ const TEMPORARY_WHATSAPP_BOOKING = process.env.REACT_APP_TEMPORARY_WHATSAPP_BOOK
 const WHATSAPP_PHONE_NUMBER = process.env.REACT_APP_WHATSAPP_PHONE_NUMBER || '1234567890'
 
 const buildWhatsAppMessage = (room) => {
+  const getTypeLabel = (type) => ({
+    standard:'Standard', superior:'Supérieure', deluxe:'Deluxe',
+    suite:'Suite', family:'Familiale', executive:'Exécutive', presidential:'Présidentielle'
+  }[type] || type)
   const defaultMessage = `Bonjour, je souhaite réserver la chambre ${room.name} (${getTypeLabel(room.type)}) - N°${room.number}. Capacité : ${room.capacity} personne(s). Merci de me contacter pour finaliser ma réservation.`
   return process.env.REACT_APP_WHATSAPP_MESSAGE || defaultMessage
 }
 
 const serif = { fontFamily: "'Cormorant Garamond', serif" };
 const sans  = { fontFamily: "'Montserrat', sans-serif" };
-
-// Helper pour récupérer le label du type (nécessaire dans le message)
-const getTypeLabel = (type) => ({
-  standard:'Standard', superior:'Supérieure', deluxe:'Deluxe', suite:'Suite', family:'Familiale', executive:'Exécutive', presidential:'Présidentielle'
-}[type] || type)
 
 export default function RoomDetailsPage() {
   const { id } = useParams()
@@ -58,8 +57,11 @@ export default function RoomDetailsPage() {
   const loadRoomPromos = async () => {
     setLoadingPromos(true)
     try {
-      const response = await promoCodesService.getRoomPromos(room._id)
-      if (response.success && response.availablePromos) { setRoomPromos(response.availablePromos); console.log(`✅ ${response.availablePromos.length} promo(s) chargée(s) pour ${room.name}`) }
+      const response = await promoCodesService.getRoomPromos(room._id, room.price)
+      if (response.success && response.availablePromos) {
+        setRoomPromos(response.availablePromos)
+        console.log(`✅ ${response.availablePromos.length} promo(s) chargée(s) pour ${room.name}`)
+      }
     } catch (error) { console.error('❌ Erreur chargement promos:', error) }
     finally { setLoadingPromos(false) }
   }
@@ -70,24 +72,40 @@ export default function RoomDetailsPage() {
     if (!promoCode.trim()) { setPromoError('Veuillez entrer un code promo'); return }
     setVerifying(true); setPromoError('')
     try {
-      const response = await promoCodesService.verifyCodePromo(promoCode, room._id, 1)
-      if (response.success) { setVerifiedPromo(response.codePromo); setPromoError(''); showNotification(`🎉 Code promo appliqué ! Économie de ${formatPrice(response.codePromo.economie)}`, 'success') }
-      else { setPromoError(response.message || 'Code promo invalide'); setVerifiedPromo(null); showNotification(response.message || 'Code promo invalide', 'error') }
+      const response = await promoCodesService.verifyCodePromo(promoCode, room._id, 1, null, null, room.price)
+      if (response.success) {
+        setVerifiedPromo(response.codePromo)
+        setPromoError('')
+        showNotification(`🎉 Code promo appliqué ! Économie de ${formatPrice(response.codePromo.economie)}`, 'success')
+      } else {
+        setPromoError(response.message || 'Code promo invalide')
+        setVerifiedPromo(null)
+        showNotification(response.message || 'Code promo invalide', 'error')
+      }
     } catch (error) {
       const errorMessage = error.message || 'Erreur lors de la vérification du code promo'
       setPromoError(errorMessage); setVerifiedPromo(null); showNotification(errorMessage, 'error')
     } finally { setVerifying(false) }
   }
 
-  const resetPromoCode = () => { setPromoCode(''); setVerifiedPromo(null); setPromoError(''); setShowPromoInput(false); showNotification('Code promo retiré', 'info') }
+  const resetPromoCode = () => {
+    setPromoCode(''); setVerifiedPromo(null); setPromoError('')
+    setShowPromoInput(false); showNotification('Code promo retiré', 'info')
+  }
 
   // ── Logique originale de réservation (intégralement conservée) ──
   const originalReservationHandler = () => {
     if (!room?._id) return
     const promoData = verifiedPromo ? {
-      codePromo: verifiedPromo.code, prixOriginal: verifiedPromo.prixOriginal, prixReduit: verifiedPromo.prixReduit,
-      economie: verifiedPromo.economie, dateDebut: verifiedPromo.dateDebut, dateFin: verifiedPromo.dateFin,
-      type: verifiedPromo.type, value: verifiedPromo.value, isValidForDates: true
+      codePromo: verifiedPromo.code,
+      prixOriginal: verifiedPromo.prixOriginal,
+      prixReduit: verifiedPromo.prixReduit,
+      economie: verifiedPromo.economie,
+      dateDebut: verifiedPromo.dateDebut,
+      dateFin: verifiedPromo.dateFin,
+      type: verifiedPromo.type,
+      value: verifiedPromo.value,
+      isValidForDates: true
     } : null
     console.log('🚀 Navigation vers Booking avec données promo:', promoData)
     if (!isAuthenticated) {
@@ -97,7 +115,7 @@ export default function RoomDetailsPage() {
     }
   }
 
-  // ── Nouvelle redirection WhatsApp temporaire ──
+  // ── Nouvelle redirection temporaire WhatsApp ──
   const whatsappRedirectHandler = () => {
     const message = buildWhatsAppMessage(room)
     const encodedMessage = encodeURIComponent(message)
@@ -121,6 +139,11 @@ export default function RoomDetailsPage() {
   const formatPrice = (price) => roomsService.formatPrice(price)
   const displayPrice = verifiedPromo ? verifiedPromo.prixReduit : room?.price
   const displayOriginalPrice = verifiedPromo ? verifiedPromo.prixOriginal : null
+
+  const getTypeLabel = (type) => ({
+    standard:'Standard', superior:'Supérieure', deluxe:'Deluxe',
+    suite:'Suite', family:'Familiale', executive:'Exécutive', presidential:'Présidentielle'
+  }[type] || type)
 
   if (isLoading || loadingPromos) {
     return (
