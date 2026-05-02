@@ -5,13 +5,27 @@ import React, { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchRoomById, clearCurrentRoom } from '../store/slices/roomsSlice'
-import { Users, Bed, Ruler, ArrowLeft, Tag, Zap, X, Check, AlertCircle, Bell } from 'lucide-react'
+import { Users, Bed, Ruler, ArrowLeft, Tag, Zap, X, Check, AlertCircle, Bell, MessageCircle } from 'lucide-react'
 import ImageSlider from '../components/ImageSlider'
 import roomsService from '../services/roomsService'
 import promoCodesService from '../services/promoCodesService'
 
+// ── TEMPORARY WHATSAPP BYPASS (à désactiver après correction CyberSource) ──
+const TEMPORARY_WHATSAPP_BOOKING = process.env.REACT_APP_TEMPORARY_WHATSAPP_BOOKING === 'true' || true
+const WHATSAPP_PHONE_NUMBER = process.env.REACT_APP_WHATSAPP_PHONE_NUMBER || '1234567890'
+
+const buildWhatsAppMessage = (room) => {
+  const defaultMessage = `Bonjour, je souhaite réserver la chambre ${room.name} (${getTypeLabel(room.type)}) - N°${room.number}. Capacité : ${room.capacity} personne(s). Merci de me contacter pour finaliser ma réservation.`
+  return process.env.REACT_APP_WHATSAPP_MESSAGE || defaultMessage
+}
+
 const serif = { fontFamily: "'Cormorant Garamond', serif" };
 const sans  = { fontFamily: "'Montserrat', sans-serif" };
+
+// Helper pour récupérer le label du type (nécessaire dans le message)
+const getTypeLabel = (type) => ({
+  standard:'Standard', superior:'Supérieure', deluxe:'Deluxe', suite:'Suite', family:'Familiale', executive:'Exécutive', presidential:'Présidentielle'
+}[type] || type)
 
 export default function RoomDetailsPage() {
   const { id } = useParams()
@@ -67,7 +81,8 @@ export default function RoomDetailsPage() {
 
   const resetPromoCode = () => { setPromoCode(''); setVerifiedPromo(null); setPromoError(''); setShowPromoInput(false); showNotification('Code promo retiré', 'info') }
 
-  const handleReservationClick = () => {
+  // ── Logique originale de réservation (intégralement conservée) ──
+  const originalReservationHandler = () => {
     if (!room?._id) return
     const promoData = verifiedPromo ? {
       codePromo: verifiedPromo.code, prixOriginal: verifiedPromo.prixOriginal, prixReduit: verifiedPromo.prixReduit,
@@ -82,12 +97,30 @@ export default function RoomDetailsPage() {
     }
   }
 
+  // ── Nouvelle redirection WhatsApp temporaire ──
+  const whatsappRedirectHandler = () => {
+    const message = buildWhatsAppMessage(room)
+    const encodedMessage = encodeURIComponent(message)
+    const whatsappUrl = `https://wa.me/${WHATSAPP_PHONE_NUMBER}?text=${encodedMessage}`
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
+    showNotification(`📱 Demande envoyée via WhatsApp pour la chambre ${room.name}`, 'info')
+  }
+
+  // ── Point d'entrée unique du bouton ──
+  const handleReservationClick = () => {
+    if (!room?._id) return
+    if (room.status !== 'disponible') return
+    if (TEMPORARY_WHATSAPP_BOOKING) {
+      whatsappRedirectHandler()
+    } else {
+      originalReservationHandler()
+    }
+  }
+
   const handleKeyPress = (e) => { if (e.key === 'Enter') verifyPromoCode() }
   const formatPrice = (price) => roomsService.formatPrice(price)
   const displayPrice = verifiedPromo ? verifiedPromo.prixReduit : room?.price
   const displayOriginalPrice = verifiedPromo ? verifiedPromo.prixOriginal : null
-
-  const getTypeLabel = (type) => ({ standard:'Standard', superior:'Supérieure', deluxe:'Deluxe', suite:'Suite', family:'Familiale', executive:'Exécutive', presidential:'Présidentielle' }[type] || type)
 
   if (isLoading || loadingPromos) {
     return (
@@ -259,14 +292,29 @@ export default function RoomDetailsPage() {
                       {showPromoInput ? 'Annuler' : '🎁 Code'}
                     </button>
                   )}
-                  <button onClick={handleReservationClick} disabled={room.status !== 'disponible'}
-                          style={{ ...sans, fontSize: "9px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}
-                          className={`${hasActivePromos ? 'flex-1' : 'w-full'} py-2.5 px-4 rounded-xl transition-all duration-200 ${
-                            room.status === 'disponible'
-                              ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-sm hover:shadow-md'
-                              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          }`}>
-                    {room.status === 'disponible' ? 'Réserver' : 'Indisponible'}
+                  <button
+                    onClick={handleReservationClick}
+                    disabled={room.status !== 'disponible'}
+                    style={{ ...sans, fontSize: "9px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}
+                    className={`${hasActivePromos ? 'flex-1' : 'w-full'} py-2.5 px-4 rounded-xl
+                      transition-all duration-200 flex items-center justify-center gap-2
+                      ${room.status === 'disponible'
+                        ? TEMPORARY_WHATSAPP_BOOKING
+                          ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 shadow-sm hover:shadow-md'
+                          : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-sm hover:shadow-md'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                    title={TEMPORARY_WHATSAPP_BOOKING && room.status === 'disponible' ? "Réservation temporaire via WhatsApp" : ""}
+                  >
+                    {room.status === 'disponible' && TEMPORARY_WHATSAPP_BOOKING ? (
+                      <>
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
+                      </>
+                    ) : room.status === 'disponible' ? (
+                      'Réserver'
+                    ) : (
+                      'Indisponible'
+                    )}
                   </button>
                 </div>
 
