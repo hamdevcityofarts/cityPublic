@@ -127,9 +127,8 @@ export default function Home() {
 
   const services = [
     { icon: <Car className="w-5 h-5" />, title: "Navette Aéroport", description: "Service gratuit 24/7 vers l'aéroport international de Douala", color: "from-blue-500 to-blue-600" },
-    { icon: <Wifi className="w-5 h-5" />, title: "WiFi Haut Débit", description: "Connexion fibre optique dans tout l'hôtel", color: "from-green-500 to-green-600" },
-    { icon: <Coffee className="w-5 h-5" />, title: "Petit-déjeuner", description: "Buffet international inclus", color: "from-amber-500 to-amber-600" },
-    { icon: <Dumbbell className="w-5 h-5" />, title: "Fitness Center", description: "Salle de sport équipée 24h/24", color: "from-red-500 to-red-600" },
+    { icon: <Wifi className="w-5 h-5" />, title: "WiFi Haut Débit", description: "Connexion start Link dans tout l'hôtel", color: "from-green-500 to-green-600" },
+    { icon: <Coffee className="w-5 h-5" />, title: "Petit-déjeuner", description: "Restaurant ", color: "from-amber-500 to-amber-600" },
     { icon: <Utensils className="w-5 h-5" />, title: "Restaurant Gastronomique", description: "Cuisine locale et internationale", color: "from-purple-500 to-purple-600" },
     { icon: <Shield className="w-5 h-5" />, title: "Sécurité 24/7", description: "Surveillance et coffre-fort", color: "from-gray-500 to-gray-600" },
   ];
@@ -444,7 +443,7 @@ export default function Home() {
               <div className="grid sm:grid-cols-2 gap-4">
                 {[
                   { icon: <MapPin className="w-5 h-5 text-blue-400" />, color: "bg-blue-500/15", title: "Quartier Privilégié", sub: "Emplacement résidentiel calme" },
-                  { icon: <Car className="w-5 h-5 text-green-400" />, color: "bg-green-500/15", title: "Proche Aéroport", sub: "Environ 5–10 minutes" },
+                  { icon: <Car className="w-5 h-5 text-green-400" />, color: "bg-green-500/15", title: "Proche Aéroport", sub: "Environ 10–20 minutes" },
                   { icon: <Navigation className="w-5 h-5 text-amber-400" />, color: "bg-amber-500/15", title: "Accès Facile", sub: "Routes principales à proximité" },
                   { icon: <Shield className="w-5 h-5 text-purple-400" />, color: "bg-purple-500/15", title: "Sécurité", sub: "Quartier sécurisé 24h/24" },
                 ].map((item, i) => (
@@ -475,10 +474,10 @@ export default function Home() {
                 </h4>
                 <div className="space-y-3">
                   {[
-                    { label: "Adresse", value: "Grand Hôtel Luxe, Douala" },
-                    { label: "Distance aéroport", value: "~5–10 minutes" },
+                    { label: "Adresse", value: "Grand Hôtel City, Douala" },
+                    { label: "Distance aéroport", value: "~10–20 minutes" },
                     { label: "Transport", value: "Taxi disponible 24/7" },
-                    { label: "Contact guidance", value: "(+237) 699 901 204" },
+                    { label: "Contact guidance", value: "(+237) 699 008 325" },
                   ].map(({ label, value }) => (
                     <div key={label} className="flex justify-between items-baseline border-b border-white/6 pb-3">
                       <span style={{ ...T.body, fontSize: "11px", letterSpacing: "0.10em" }} className="text-blue-100/50">
@@ -506,7 +505,6 @@ export default function Home() {
                     "Navette aéroport sur réservation",
                     "Service taxi 24h/24",
                     "Parking privé sécurisé gratuit",
-                    "Location de voitures avec chauffeur",
                   ].map((item) => (
                     <li key={item} className="flex items-center gap-3">
                       <div className="w-1.5 h-1.5 rounded-full bg-amber-400/60 flex-shrink-0" />
