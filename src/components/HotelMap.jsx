@@ -12,7 +12,7 @@ const HotelMap = () => {
         allowFullScreen="" 
         loading="lazy" 
         referrerPolicy="no-referrer-when-downgrade"
-        title="Localisation exacte du Grand Hôtel Luxe - Douala"
+        title="Localisation exacte du Grand Hôtel city - Douala"
         className="rounded-xl"
       />
     </div>
